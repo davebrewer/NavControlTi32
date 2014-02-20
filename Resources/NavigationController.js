@@ -11,9 +11,10 @@ function NavigationController() {
 };
 
 // Note: without a parameter, close automatically closes 1 window
-NavigationController.prototype.close = function(numWindows) {
+NavigationController.prototype.back = function(numWindows) {
 	Ti.API.log("close function.");
 	if ((this.windowStack.length > 1) && (numWindows > 1)) {
+		//Ti.API.info('1')
 		// setup chain reaction by setting up the flags on all the windows
 		var i = this.windowStack.length - 1;
 		for (var j = 1; j < numWindows; j++)
@@ -27,19 +28,25 @@ NavigationController.prototype.close = function(numWindows) {
 	}
 	else
 	{
+		//Ti.API.info('2');
 		(this.navGroup) ? this.navGroup.closeWindow(this.windowStack[this.windowStack.length - 1]) : this.windowStack[this.windowStack.length - 1].close();
 	}
-	Ti.API.log("End Home. Stack: " + this.windowStack.map(function(v) {return v.title;}));
+	Ti.API.log("End Home. "+this.windowStack.length+" Stack: " + this.windowStack.map(function(v) {return v.title;}));
+	Ti.App.Properties.setString('count', this.windowStack.length);
 };
 
 NavigationController.prototype.open = function(/*Ti.UI.Window*/windowToOpen) {
-	Ti.API.log("Open function.");
+	Ti.API.log("Open function." + windowToOpen);
+	
+	
+	
 	//add the window to the stack of windows managed by the controller
 	this.windowStack.push(windowToOpen);
 
 	//grab a copy of the current nav controller for use in the callback
 	var that = this;
 	var lastPushed = windowToOpen;
+	
 	windowToOpen.addEventListener('close', function() {
 		if (that.windowStack.length > 1) // don't pop the last Window, which is the base one
 		{
@@ -67,6 +74,7 @@ NavigationController.prototype.open = function(/*Ti.UI.Window*/windowToOpen) {
 			} 
 		
 			Ti.API.log("End event 'close'. Stack: " + that.windowStack.map(function(v) {return v.title;}));
+			Ti.App.Properties.setString('count', Ti.App.Properties.getString('count') - 1);
 		} // end if windowStack.length > 1, and end of my hack
 	}); // end eventListener 'close'
 	
@@ -82,30 +90,32 @@ NavigationController.prototype.open = function(/*Ti.UI.Window*/windowToOpen) {
 
 	//hack - setting this property ensures the window is "heavyweight" (associated with an Android activity)
 	windowToOpen.navBarHidden = windowToOpen.navBarHidden || false;
-
+	
 	//This is the first window
 	if (this.windowStack.length === 1) {
 		if (Ti.Platform.osname === 'android') {
 			windowToOpen.exitOnClose = true;
 			windowToOpen.open();
 		} else {
-			// changed this from Ti.UI.iPhone.createNavigationGroup because it has been deprecated
-			// since Ti 3.2.0
-			this.navGroup = Ti.UI.iOS.createNavigationWindow({
-				window : windowToOpen
+			this.navGroup = Titanium.UI.iOS.createNavigationWindow({
+		   window: windowToOpen
 			});
 			this.navGroup.open();
 		}
 	}
 	//All subsequent windows
 	else {
+		Ti.API.info('All subsequent windows ' + this.windowStack.length);
+		Ti.App.Properties.setString('count', this.windowStack.length);
 		if (Ti.Platform.osname === 'android') {
 			windowToOpen.open();
 		} else {
 			this.navGroup.openWindow(windowToOpen);
 		}
 	}
+	
 	Ti.API.log("End Open. Stack: " + this.windowStack.map(function(v) {return v.title;}));
+	Ti.App.Properties.setString('count', this.windowStack.length);
 }; // end of open function
 
 // go back to the initial window of the NavigationController
@@ -122,13 +132,14 @@ NavigationController.prototype.home = function() {
 		(this.navGroup) ? this.navGroup.closeWindow(this.windowStack[this.windowStack.length - 1]) : this.windowStack[this.windowStack.length - 1].close();
 	}
 	Ti.API.log("End Home. Stack: " + this.windowStack.map(function(v) {return v.title;}));
+	Ti.App.Properties.setString('count', this.windowStack.length);
 };
 
 // close all the windows except for the 1st one, and then open a new window
 NavigationController.prototype.openFromHome = function(windowToOpen) {
 	Ti.API.log("openFromHome function.");
 	if(this.windowStack.length == 1)
-		this.open(windowToOpen);
+		this.openWindow(windowToOpen);
 	else
 	{
 		// delegate opening of the window to last window to close
